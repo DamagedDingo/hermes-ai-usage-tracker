@@ -656,10 +656,8 @@ function GlanceCard({ provider }) {
                     className: 'w-20 shrink-0 truncate text-(--ui-text-tertiary)',
                     children: window.label
                   }),
-                  jsx('span', {
-                    className: 'min-w-0 flex-1 border-b border-dashed',
-                    style: { borderColor: 'var(--ui-stroke-secondary)', marginBottom: '2px' }
-                  }),
+                  // Plain spacer: label left, countdown + percent right-aligned.
+                  jsx('span', { className: 'min-w-0 flex-1' }),
                   jsx('span', {
                     className: 'shrink-0 tabular-nums text-(--ui-text-quaternary)',
                     children: hasValue ? resetIn(window.reset_at) || '' : window.detail || 'unlimited'

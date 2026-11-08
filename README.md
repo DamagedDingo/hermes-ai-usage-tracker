@@ -77,8 +77,8 @@ Honest limits:
 ## Rail card (desktop)
 
 Besides the page and the status-bar chip, the plugin docks a compact card under the
-**Files** pane in the right rail: one line per quota window — name, dashed leader,
-countdown to reset, percent left — with the page's thin bar underneath. Clicking a card
+**Files** pane in the right rail: one line per quota window — name, countdown to reset,
+percent left (right-aligned) — with the page's thin bar underneath. Clicking a card
 opens the full page, and it shares the page's query (same React Query key), so the rail
 costs no extra requests. The pane is 240px tall by default (min 140px) and resizes like
 any other.
