@@ -74,6 +74,25 @@ Honest limits:
 - Credential lookup uses the profile's own home first and falls back to the server
   process environment (exactly how Hermes itself resolves them for that profile).
 
+## Rail card (desktop)
+
+Besides the page and the status-bar chip, the plugin docks a compact card under the
+**Files** pane in the right rail: one line per quota window — name, dashed leader,
+countdown to reset, percent left — with the page's thin bar underneath. Clicking a card
+opens the full page, and it shares the page's query (same React Query key), so the rail
+costs no extra requests. The pane is 240px tall by default (min 140px) and resizes like
+any other.
+
+Two caveats worth knowing before enabling it:
+
+- **Minimized terminal.** With the terminal collapsed to its 28px strip, a right-rail
+  plugin pane currently pins the chat column to 28px
+  ([NousResearch/hermes-agent#140632](https://github.com/NousResearch/hermes-agent/issues/140632)).
+  Keep the terminal open or hidden until that core fix lands.
+- **Closing the card disables the plugin** — it is the plugin's only contributed pane, and
+  that is how the app treats a plugin's last pane. Re-enable it in Settings → Plugins, or
+  use **Reset layout**.
+
 ## Hiding providers
 
 Each card has a **✕** control. Hidden providers leave the page and are excluded from the
