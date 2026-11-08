@@ -791,9 +791,12 @@ export default {
         dock: { pane: 'files', pos: 'bottom' },
         height: '168px',
         minHeight: '112px',
-        // Same column as the file tree: never demand more than it allows
-        // (10rem), so the right rail still shrinks back to chat-friendly width.
-        minWidth: '10rem'
+        // Same clamp set as the Files pane (10rem..20rem). A fixed split only
+        // keeps its cap when EVERY pane in the column declares one: leaving
+        // maxWidth off makes the right rail the leftover absorber, which is
+        // what ballooned it over the chat and ignored sash sizes.
+        minWidth: '10rem',
+        maxWidth: '20rem'
       },
       render: () => jsx(QuotaGlance, {})
     })
