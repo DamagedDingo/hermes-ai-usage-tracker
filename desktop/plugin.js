@@ -603,7 +603,7 @@ function UsageChip() {
 
 /** One dashboard card, scaled down: provider header, then each quota window on
  *  its own line with the same thin bar the page draws underneath. */
-function GlanceCard({ provider, tz }) {
+function GlanceCard({ provider }) {
   const status = statusOf(provider)
   const windows = provider.quota?.windows || []
   const details = provider.quota?.details || []
@@ -646,12 +646,23 @@ function GlanceCard({ provider, tz }) {
             // don't exist in its stylesheet (core uses h-0.5, not these).
             style: { gap: '3px' },
             children: [
+              // One line per window: name ……………… countdown  97%. The absolute
+              // reset time and zone stay in the page; at rail size the
+              // countdown is what's readable at a glance.
               jsxs('span', {
-                className: 'flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[0.625rem]',
+                className: 'flex w-full items-baseline gap-2 text-[0.625rem]',
                 children: [
                   jsx('span', {
-                    className: 'w-16 shrink-0 truncate text-(--ui-text-tertiary)',
+                    className: 'w-20 shrink-0 truncate text-(--ui-text-tertiary)',
                     children: window.label
+                  }),
+                  jsx('span', {
+                    className: 'min-w-0 flex-1 border-b border-dashed',
+                    style: { borderColor: 'var(--ui-stroke-secondary)', marginBottom: '2px' }
+                  }),
+                  jsx('span', {
+                    className: 'shrink-0 tabular-nums text-(--ui-text-quaternary)',
+                    children: hasValue ? resetIn(window.reset_at) || '' : window.detail || 'unlimited'
                   }),
                   hasValue
                     ? jsx('span', {
@@ -661,16 +672,7 @@ function GlanceCard({ provider, tz }) {
                             ? 'text-(--ui-text-primary)'
                             : 'text-(--ui-text-secondary)'
                         ),
-                        children: `${pct(remaining)} left`
-                      })
-                    : jsx('span', {
-                        className: 'text-(--ui-text-quaternary)',
-                        children: window.detail || 'unlimited'
-                      }),
-                  window.reset_at
-                    ? jsx('span', {
-                        className: 'min-w-0 truncate text-(--ui-text-quaternary)',
-                        children: resetLabel(window.reset_at, tz)
+                        children: pct(remaining)
                       })
                     : null
                 ]
@@ -716,7 +718,6 @@ function QuotaGlance() {
   const hiddenIds = useValue($hidden)
   const selected = useValue($profile)
   const { data, refetch } = useUsage(selected, REFRESH_PAGE_MS)
-  const tz = data?.timezone || ''
   const providers = (data?.providers || [])
     .filter(provider => !(hiddenIds || []).includes(provider.id))
     .filter(provider => (provider.quota?.windows || []).length > 0 || provider.quota?.available)
@@ -747,7 +748,7 @@ function QuotaGlance() {
       jsx('div', {
         className: 'min-h-0 flex-1 overflow-y-auto',
         children: providers.length
-          ? providers.map(provider => jsx(GlanceCard, { provider, tz }, provider.id))
+          ? providers.map(provider => jsx(GlanceCard, { provider }, provider.id))
           : jsx('div', {
               className: 'px-1 py-0.5 text-[0.6875rem] text-(--ui-text-quaternary)',
               children: data ? 'No live quota for this profile.' : 'Loading…'
