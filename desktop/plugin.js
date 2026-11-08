@@ -150,17 +150,23 @@ function fmtWhen(iso, tz) {
   return zone ? `${stamp} ${zone}` : stamp
 }
 
-function resetLabel(iso, tz) {
+/** `1d 0h` / `4h 5m` / `6m` / `now` — the countdown half of a reset label. */
+function resetIn(iso) {
   if (!iso) return null
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
   const seconds = Math.round((d.getTime() - Date.now()) / 1000)
-  if (seconds <= 0) return 'resets now'
+  if (seconds <= 0) return 'now'
   const days = Math.floor(seconds / 86_400)
   const hours = Math.floor((seconds % 86_400) / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  const rel = days ? `in ${days}d ${hours}h` : hours ? `in ${hours}h ${minutes}m` : `in ${minutes}m`
-  return `resets ${rel} · ${fmtWhen(iso, tz)}`
+  return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
+function resetLabel(iso, tz) {
+  const rel = resetIn(iso)
+  if (!rel) return null
+  return `resets ${rel === 'now' ? 'now' : `in ${rel}`} · ${fmtWhen(iso, tz)}`
 }
 
 function pct(value) {
@@ -595,6 +601,112 @@ function UsageChip() {
   })
 }
 
+/** One line per provider for the rail: worst window, countdown, remaining %. */
+function GlanceRow({ row, tz }) {
+  const { provider, worst } = row
+  const tone = toneFor(worst.remaining)
+  const detail = [
+    `${provider.label}${worst.window ? ` — ${worst.window} window` : ''}`,
+    resetLabel(worst.reset_at, tz)
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return jsxs('button', {
+    type: 'button',
+    title: detail,
+    'aria-label': detail,
+    className: 'flex w-full items-center gap-1.5 rounded-[3px] px-1 py-[2px] text-left hover:bg-(--ui-stroke-secondary)',
+    onClick: () => {
+      haptic('tap')
+      host.navigate(ROUTE)
+    },
+    children: [
+      jsx('span', {
+        'aria-hidden': true,
+        className: 'inline-block size-1.5 shrink-0 rounded-full',
+        style: {
+          background:
+            tone === 'bad'
+              ? 'var(--ui-accent)'
+              : tone === 'warn'
+                ? 'var(--ui-text-secondary)'
+                : 'var(--ui-text-quaternary)'
+        }
+      }),
+      jsx('span', {
+        className: 'min-w-0 flex-1 truncate text-[0.6875rem] text-(--ui-text-secondary)',
+        children: provider.label
+      }),
+      jsx('span', {
+        className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)',
+        children: resetIn(worst.reset_at) || ''
+      }),
+      jsx('span', {
+        className: 'shrink-0 text-[0.6875rem] tabular-nums text-(--ui-text-secondary)',
+        children: pct(worst.remaining)
+      })
+    ]
+  })
+}
+
+/** Compact quota glance, docked under the Files pane (right rail). */
+function QuotaGlance() {
+  const hiddenIds = useValue($hidden)
+  const selected = useValue($profile)
+  const { data, refetch } = useUsage(selected, REFRESH_PAGE_MS)
+  const tz = data?.timezone || ''
+  const rows = (data?.providers || [])
+    .filter(provider => !(hiddenIds || []).includes(provider.id))
+    .map(provider => ({ provider, worst: worstWindowOf(provider) }))
+    .filter(row => row.worst)
+    .sort((a, b) => a.worst.remaining - b.worst.remaining)
+
+  return jsxs('div', {
+    className: 'flex h-full flex-col gap-0.5 px-2 py-1',
+    children: [
+      jsxs('div', {
+        className: 'flex items-center gap-1.5',
+        children: [
+          jsx('span', { className: 'text-[0.6875rem] font-medium text-(--ui-text-secondary)', children: 'AI usage' }),
+          jsx('span', { className: 'text-[0.625rem] text-(--ui-text-quaternary)', children: selected || '' }),
+          jsx('span', { className: 'flex-1' }),
+          jsx('button', {
+            type: 'button',
+            title: 'Refresh quota',
+            'aria-label': 'Refresh quota',
+            className: 'px-1 text-(--ui-text-quaternary) hover:text-(--ui-text-secondary)',
+            onClick: () => {
+              haptic('tap')
+              refetch()
+            },
+            children: jsx(Codicon, { name: 'refresh' })
+          })
+        ]
+      }),
+      jsx('div', {
+        className: 'min-h-0 flex-1 overflow-y-auto',
+        children: rows.length
+          ? rows.map(row => jsx(GlanceRow, { row, tz }, row.provider.id))
+          : jsx('div', {
+              className: 'px-1 py-0.5 text-[0.6875rem] text-(--ui-text-quaternary)',
+              children: data ? 'No live quota for this profile.' : 'Loading…'
+            })
+      }),
+      jsxs('button', {
+        type: 'button',
+        title: 'Open the AI usage page',
+        className: 'flex items-center gap-1 text-left text-[0.625rem] text-(--ui-text-quaternary) hover:text-(--ui-text-secondary)',
+        onClick: () => {
+          haptic('tap')
+          host.navigate(ROUTE)
+        },
+        children: [jsx('span', { children: 'Details' }), jsx(Codicon, { name: 'chevron-right' })]
+      })
+    ]
+  })
+}
+
 export default {
   id: ID,
   name: 'AI Usage Tracker',
@@ -644,6 +756,21 @@ export default {
       area: STATUSBAR_AREAS.right,
       order: 125,
       render: () => jsx(UsageChip, {})
+    })
+
+    // Compact glance docked under the right-rail Files pane. The file tree
+    // itself takes no plugin contributions; a pane can only dock beside it.
+    ctx.register({
+      id: 'files-glance',
+      area: 'panes',
+      title: 'AI usage',
+      data: {
+        placement: 'right',
+        dock: { pane: 'files', pos: 'bottom' },
+        height: '132px',
+        minHeight: '88px'
+      },
+      render: () => jsx(QuotaGlance, {})
     })
   }
 }
