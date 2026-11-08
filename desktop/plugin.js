@@ -640,7 +640,11 @@ function GlanceCard({ provider, tz }) {
         return jsxs(
           'span',
           {
-            className: 'flex w-full flex-col gap-[2px]',
+            className: 'flex w-full flex-col',
+            // Inline gap/height: the app's Tailwind build never scans plugin
+            // files, so arbitrary utilities like gap-[2px] / h-[2px] simply
+            // don't exist in its stylesheet (core uses h-0.5, not these).
+            style: { gap: '3px' },
             children: [
               jsxs('span', {
                 className: 'flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[0.625rem]',
@@ -672,12 +676,14 @@ function GlanceCard({ provider, tz }) {
                 ]
               }),
               jsx('span', {
-                className: 'block h-[2px] w-full overflow-hidden rounded-[1px]',
-                style: { background: 'var(--ui-stroke-secondary)' },
+                className: 'block w-full overflow-hidden',
+                style: { height: '2px', borderRadius: '1px', background: 'var(--ui-stroke-secondary)' },
                 children: hasValue
                   ? jsx('span', {
-                      className: 'block h-full rounded-[1px]',
+                      className: 'block',
                       style: {
+                        height: '100%',
+                        borderRadius: '1px',
                         width: `${Math.max(1, Math.min(100, Number(remaining)))}%`,
                         background: 'var(--ui-accent)'
                       }
