@@ -601,10 +601,11 @@ function UsageChip() {
   })
 }
 
-/** One line per provider for the rail: worst window, countdown, remaining %. */
+/** Two lines per provider: label + % left, then the same bar the page draws. */
 function GlanceRow({ row, tz }) {
   const { provider, worst } = row
   const tone = toneFor(worst.remaining)
+  const remaining = Math.max(1, Math.min(100, Number(worst.remaining)))
   const detail = [
     `${provider.label}${worst.window ? ` — ${worst.window} window` : ''}`,
     resetLabel(worst.reset_at, tz)
@@ -616,35 +617,56 @@ function GlanceRow({ row, tz }) {
     type: 'button',
     title: detail,
     'aria-label': detail,
-    className: 'flex w-full items-center gap-1.5 rounded-[3px] px-1 py-[2px] text-left hover:bg-(--ui-stroke-secondary)',
+    className: 'flex w-full flex-col gap-[3px] rounded-[3px] px-1 py-[3px] text-left hover:bg-(--ui-stroke-secondary)',
     onClick: () => {
       haptic('tap')
       host.navigate(ROUTE)
     },
     children: [
-      jsx('span', {
-        'aria-hidden': true,
-        className: 'inline-block size-1.5 shrink-0 rounded-full',
-        style: {
-          background:
-            tone === 'bad'
-              ? 'var(--ui-accent)'
-              : tone === 'warn'
-                ? 'var(--ui-text-secondary)'
-                : 'var(--ui-text-quaternary)'
-        }
+      jsxs('span', {
+        className: 'flex w-full items-center gap-1.5',
+        children: [
+          jsx('span', {
+            'aria-hidden': true,
+            className: 'inline-block size-1.5 shrink-0 rounded-full',
+            style: {
+              background:
+                tone === 'bad'
+                  ? 'var(--ui-accent)'
+                  : tone === 'warn'
+                    ? 'var(--ui-text-secondary)'
+                    : 'var(--ui-text-quaternary)'
+            }
+          }),
+          jsx('span', {
+            className: 'min-w-0 flex-1 truncate text-[0.6875rem] text-(--ui-text-secondary)',
+            children: provider.label
+          }),
+          jsx('span', {
+            className: cn(
+              'shrink-0 text-[0.6875rem] tabular-nums',
+              tone === 'bad' || tone === 'warn' ? 'text-(--ui-text-primary)' : 'text-(--ui-text-secondary)'
+            ),
+            children: pct(worst.remaining)
+          })
+        ]
       }),
-      jsx('span', {
-        className: 'min-w-0 flex-1 truncate text-[0.6875rem] text-(--ui-text-secondary)',
-        children: provider.label
-      }),
-      jsx('span', {
-        className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)',
-        children: resetIn(worst.reset_at) || ''
-      }),
-      jsx('span', {
-        className: 'shrink-0 text-[0.6875rem] tabular-nums text-(--ui-text-secondary)',
-        children: pct(worst.remaining)
+      jsxs('span', {
+        className: 'flex w-full items-center gap-1.5 pl-3',
+        children: [
+          jsx('span', {
+            className: 'h-[3px] min-w-0 flex-1 overflow-hidden rounded-[1px]',
+            style: { background: 'var(--ui-stroke-secondary)' },
+            children: jsx('span', {
+              className: 'block h-full rounded-[1px]',
+              style: { width: `${remaining}%`, background: 'var(--ui-accent)' }
+            })
+          }),
+          jsx('span', {
+            className: 'shrink-0 text-[0.625rem] tabular-nums text-(--ui-text-quaternary)',
+            children: resetIn(worst.reset_at) || ''
+          })
+        ]
       })
     ]
   })
@@ -767,8 +789,11 @@ export default {
       data: {
         placement: 'right',
         dock: { pane: 'files', pos: 'bottom' },
-        height: '132px',
-        minHeight: '88px'
+        height: '168px',
+        minHeight: '112px',
+        // Same column as the file tree: never demand more than it allows
+        // (10rem), so the right rail still shrinks back to chat-friendly width.
+        minWidth: '10rem'
       },
       render: () => jsx(QuotaGlance, {})
     })
